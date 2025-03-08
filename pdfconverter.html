@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Dönüştürücü - Word & Excel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a86e8;
+            --hover-color: #3a76d8;
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .tab:hover {
+            color: var(--hover-color);
+        }
+        
+        .upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-container:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(74, 134, 232, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 50px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: 500;
+            display: block;
+            margin: 0 auto;
+            width: 200px;
+            text-align: center;
+        }
+        
+        .button:hover {
+            background-color: var(--hover-color);
+        }
+        
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .file-info {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .progress-container {
+            width: 100%;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .preview-container {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .preview-title {
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .preview-content {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+        }
+        
+        .options-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .option-group {
+            margin-bottom: 15px;
+        }
+        
+        .option-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+        }
+        
+        .radio-option input {
+            margin-right: 5px;
+        }
+        
+        .notifications {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .notification {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 300px;
+            animation: slide-in 0.5s ease-out;
+        }
+        
+        .notification.error {
+            background-color: #f44336;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        
+        @keyframes slide-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slide-out {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        .slide-out {
+            animation: slide-out 0.5s ease-out forwards;
+        }
+        
+        .info-box {
+            background-color: #e7f3fe;
+            border-left: 4px solid #2196F3;
+            margin-bottom: 15px;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Dönüştürücü</h1>
+        
+        <div class="card">
+            <div class="info-box">
+                Bu uygulama PDF dosyalarını Microsoft Word (.docx) ve Excel (.xlsx) formatlarına dönüştürür. Dönüştürme işlemi tarayıcınızda gerçekleşir, dosyalarınız hiçbir sunucuya yüklenmez.
+            </div>
+            
+            <div class="tabs">
+                <div class="tab active" data-target="word">PDF → Word</div>
+                <div class="tab" data-target="excel">PDF → Excel</div>
+            </div>
+            
+            <div class="upload-container" id="dropArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">PDF Dosyanızı Buraya Sürükleyin</div>
+                <div class="upload-hint">veya dosya seçmek için tıklayın</div>
+                <input type="file" class="file-input" id="fileInput" accept=".pdf">
+            </div>
+            
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+            
+            <div class="options-container" id="wordOptions">
+                <div class="option-group">
+                    <label class="option-label">Format Seçenekleri:</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="wordFormat" value="simple" checked> Basit (Sadece Metin)
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="wordFormat" value="formatted"> Formatlı (Tablo ve Resimlerle)
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="options-container" id="excelOptions">
+                <div class="option-group">
+                    <label class="option-label">Veri Çıkarma Metodu:</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="excelMethod" value="tables" checked> Tablolar
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="excelMethod" value="text"> Tüm Metin
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                <div class="status" id="statusText">Hazırlanıyor...</div>
+            </div>
+            
+            <button class="button" id="convertButton" disabled>Dönüştür</button>
+        </div>
+        
+        <div class="card preview-container" id="previewContainer">
+            <div class="preview-title">Önizleme:</div>
+            <div class="preview-content" id="previewContent"></div>
+        </div>
+    </div>
+
+    <div class="notifications" id="notifications"></div>
+
+    <script>
+        // PDF.js worker script
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        
+        // DOM Elements
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const convertButton = document.getElementById('convertButton');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const statusText = document.getElementById('statusText');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewContent = document.getElementById('previewContent');
+        const tabs = document.querySelectorAll('.tab');
+        const wordOptions = document.getElementById('wordOptions');
+        const excelOptions = document.getElementById('excelOptions');
+        const notifications = document.getElementById('notifications');
+        
+        // Variables
+        let selectedFile = null;
+        let activeTab = 'word';
+        let pdfText = [];
+        let pdfPages = 0;
+        
+        // Add event listeners
+        dropArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        convertButton.addEventListener('click', startConversion);
+        
+        // Configure drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.style.borderColor = 'var(--primary-color)';
+            dropArea.style.backgroundColor = 'rgba(74, 134, 232, 0.05)';
+        }
+        
+        function unhighlight() {
+            dropArea.style.borderColor = '#ccc';
+            dropArea.style.backgroundColor = 'transparent';
+        }
+        
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) {
+                handleFiles(files);
+            }
+        }
+        
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeTab = tab.dataset.target;
+                
+                // Show relevant options
+                if (activeTab === 'word') {
+                    wordOptions.style.display = selectedFile ? 'block' : 'none';
+                    excelOptions.style.display = 'none';
+                } else {
+                    wordOptions.style.display = 'none';
+                    excelOptions.style.display = selectedFile ? 'block' : 'none';
+                }
+            });
+        });
+        
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length) {
+                handleFiles(files);
+            }
+        }
+        
+        function handleFiles(files) {
+            if (files[0].type !== 'application/pdf') {
+                showNotification('Lütfen sadece PDF dosyası yükleyin.', true);
+                return;
+            }
+            
+            selectedFile = files[0];
+            displayFileInfo();
+            parseFileContent();
+        }
+        
+        function displayFileInfo() {
+            fileName.textContent = selectedFile.name;
+            fileSize.textContent = formatFileSize(selectedFile.size);
+            fileInfo.style.display = 'block';
+            convertButton.disabled = false;
+            
+            // Show relevant options based on active tab
+            if (activeTab === 'word') {
+                wordOptions.style.display = 'block';
+                excelOptions.style.display = 'none';
+            } else {
+                wordOptions.style.display = 'none';
+                excelOptions.style.display = 'block';
+            }
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+        
+        function parseFileContent() {
+            const fileReader = new FileReader();
+            
+            fileReader.onload = function(event) {
+                const typedArray = new Uint8Array(event.target.result);
+                
+                // Parse PDF
+                pdfText = [];
+                
+                // Using the newer version of PDF.js
+                const loadingTask = pdfjsLib.getDocument({data: typedArray});
+                loadingTask.promise.then(function(pdf) {
+                    pdfPages = pdf.numPages;
+                    
+                    // Generate preview from first page
+                    pdf.getPage(1).then(function(page) {
+                        page.getTextContent().then(function(textContent) {
+                            const textItems = textContent.items;
+                            let lastY = null;
+                            let text = '';
+                            
+                            for (let i = 0; i < textItems.length; i++) {
+                                const item = textItems[i];
+                                
+                                if (lastY !== item.transform[5] && lastY !== null) {
+                                    text += '\n';
+                                }
+                                
+                                text += item.str + ' ';
+                                lastY = item.transform[5];
+                            }
+                            
+                            previewContent.textContent = text.trim();
+                            previewContainer.style.display = 'block';
+                        });
+                    });
+                    
+                    // Extract text from all pages (will be used during conversion)
+                    let numPagesProcessed = 0;
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        pdf.getPage(i).then(function(page) {
+                            page.getTextContent().then(function(textContent) {
+                                pdfText[i-1] = textContent;
+                                numPagesProcessed++;
+                                
+                                if (numPagesProcessed === pdfPages) {
+                                    console.log('All PDF pages processed');
+                                }
+                            });
+                        });
+                    }
+                }).catch(function(error) {
+                    console.error('Error loading PDF:', error);
+                    showNotification('PDF yüklenirken bir hata oluştu: ' + error.message, true);
+                });
+            };
+            
+            fileReader.readAsArrayBuffer(selectedFile);
+        }
+        
+        function startConversion() {
+            progressBar.style.width = '0%';
+            progressContainer.style.display = 'block';
+            convertButton.disabled = true;
+            
+            // Update progress bar
+            updateProgressBar(10, 'PDF içeriği işleniyor...');
+            
+            try {
+                if (activeTab === 'word') {
+                    createWordDocument();
+                } else {
+                    createExcelDocument();
+                }
+            } catch (error) {
+                console.error('Conversion error:', error);
+                showNotification('Dönüştürme sırasında bir hata oluştu: ' + error.message, true);
+                resetState();
+            }
+        }
+        
+        function updateProgressBar(percentage, message) {
+            progressBar.style.width = percentage + '%';
+            statusText.textContent = message;
+        }
+        
+        async function createWordDocument() {
+            updateProgressBar(20, 'PDF içeriğini alınıyor...');
+            
+            // Construct text from all pages
+            let allText = '';
+            pdfText.forEach(pageContent => {
+                if (pageContent && pageContent.items) {
+                    let lastY = null;
+                    
+                    pageContent.items.forEach(item => {
+                        if (lastY !== item.transform[5] && lastY !== null) {
+                            allText += '\n';
+                        }
+                        
+                        allText += item.str + ' ';
+                        lastY = item.transform[5];
+                    });
+                    
+                    allText += '\n\n'; // Add space between pages
+                }
+            });
+            
+            updateProgressBar(40, 'Word belgesi oluşturuluyor...');
+            
+            // Create a proper Word document using Office Open XML format
+            const zip = new JSZip();
+            
+            // Add required files for a minimal Word document
+            
+            // [Content_Types].xml
+            zip.file("[Content_Types].xml", 
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+                '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+                '<Default Extension="xml" ContentType="application/xml"/>' +
+                '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+                '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+                '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+                '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+                '</Types>'
+            );
+            
+            // _rels/.rels
+            zip.file("_rels/.rels", 
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+                '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+                '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+                '</Relationships>'
+            );
+            
+            // docProps/app.xml
+            zip.file("docProps/app.xml", 
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">' +
+                '<Application>PDF to Word Converter</Application>' +
+                '<AppVersion>1.0.0</AppVersion>' +
+                '</Properties>'
+            );
+            
+            // docProps/core.xml
+            zip.file("docProps/core.xml", 
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
+                'xmlns:dc="http://purl.org/dc/elements/1.1/" ' +
+                'xmlns:dcterms="http://purl.org/dc/terms/" ' +
+                'xmlns:dcmitype="http://purl.org/dc/dcmitype/" ' +
+                'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+                '<dc:title>' + selectedFile.name.replace('.pdf', '') + '</dc:title>' +
+                '<dc:creator>PDF to Word Converter</dc:creator>' +
+                '<dcterms:created xsi:type="dcterms:W3CDTF">' + new Date().toISOString() + '</dcterms:created>' +
+                '<dcterms:modified xsi:type="dcterms:W3CDTF">' + new Date().toISOString() + '</dcterms:modified>' +
+                '</cp:coreProperties>'
+            );
+            
+            // word/styles.xml
+            zip.file("word/styles.xml", 
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+                '<w:style w:type="paragraph" w:default="1" w:styleId="Normal">' +
+                '<w:name w:val="Normal"/>' +
+                '<w:pPr/>' +
+                '<w:rPr>' +
+                '<w:sz w:val="24"/>' +
+                '</w:rPr>' +
+                '</w:style>' +
+                '</w:styles>'
+            );
+            
+            // word/_rels/document.xml.rels
+            zip.file("word/_rels/document.xml.rels", 
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+                '</Relationships>'
+            );
+            
+            updateProgressBar(60, 'PDF içeriği Word formatına dönüştürülüyor...');
+            
+            // word/document.xml - This is where the actual document content goes
+            let documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+                '<w:body>';
+            
+            // Split text by lines and create paragraphs
+            const lines = allText.split('\n');
+            for (const line of lines) {
+                if (line.trim() === '') {
+                    // Empty paragraph
+                    documentXml += '<w:p><w:r><w:t></w:t></w:r></w:p>';
+                } else {
+                    // Escape XML special characters
+                    const escapedText = line
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&apos;');
+                    
+                    documentXml += '<w:p>' +
+                        '<w:r>' +
+                        '<w:t>' + escapedText + '</w:t>' +
+                        '</w:r>' +
+                        '</w:p>';
+                }
+            }
+            
+            documentXml += '</w:body></w:document>';
+            
+            zip.file("word/document.xml", documentXml);
+            
+            updateProgressBar(80, 'Word dosyası hazırlanıyor...');
+            
+            // Generate the document
+            const content = await zip.generateAsync({type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+            
+            updateProgressBar(100, 'Dönüştürme tamamlandı!');
+            
+            // Save the file
+            saveAs(content, fileName.textContent.replace('.pdf', '.docx'));
+            
+            setTimeout(() => {
+                showNotification('Word belgesi başarıyla oluşturuldu!');
+                resetState();
+            }, 1000);
+        }
+        
+        function createExcelDocument() {
+            updateProgressBar(20, 'PDF içeriği alınıyor...');
+            
+            const method = document.querySelector('input[name="excelMethod"]:checked').value;
+            const rows = [];
+            
+            // Create a row for each line of text
+            pdfText.forEach((pageContent, pageIndex) => {
+                if (pageContent && pageContent.items) {
+                    let lastY = null;
+                    let currentRow = [];
+                    
+                    if (method === 'text') {
+                        // Process as text (one item per line)
+                        pageContent.items.forEach(item => {
+                            if (lastY !== item.transform[5] && lastY !== null) {
+                                if (currentRow.length > 0) {
+                                    rows.push([currentRow.join(' ')]);
+                                    currentRow = [];
+                                }
+                            }
+                            
+                            currentRow.push(item.str);
+                            lastY = item.transform[5];
+                        });
+                        
+                        // Add the last row
+                        if (currentRow.length > 0) {
+                            rows.push([currentRow.join(' ')]);
+                        }
+                        
+                        // Add a blank row between pages
+                        if (pageIndex < pdfPages - 1) {
+                            rows.push(['']);
+                        }
+                    } else {
+                        // Try to detect tables by grouping text items with similar Y positions
+                        const lines = {};
+                        
+                        pageContent.items.forEach(item => {
+                            // Round the Y position to group similar lines
+                            const yPos = Math.round(item.transform[5]);
+                            if (!lines[yPos]) {
+                                lines[yPos] = [];
+                            }
+                            
+                            lines[yPos].push({
+                                text: item.str,
+                                x: item.transform[4]
+                            });
+                        });
+                        
+                        // Sort lines by Y position (top to bottom)
+                        const sortedYPositions = Object.keys(lines).sort((a, b) => b - a);
+                        
+                        sortedYPositions.forEach(yPos => {
+                            // Sort items in line by X position (left to right)
+                            const lineItems = lines[yPos].sort((a, b) => a.x - b.x);
+                            const rowData = lineItems.map(item => item.text);
+                            
+                            if (rowData.length > 0) {
+                                rows.push(rowData);
+                            }
+                        });
+                        
+                        // Add a blank row between pages
+                        if (pageIndex < pdfPages - 1) {
+                            rows.push([]);
+                        }
+                    }
+                }
+            });
+            
+            updateProgressBar(60, 'Excel belgesi oluşturuluyor...');
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            
+            // Add sheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, "Sayfa1");
+            
+            updateProgressBar(80, 'Excel dosyası hazırlanıyor...');
+            
+            // Generate the Excel file
+            const excelBuffer = XLSX.write(wb, {bookType: 'xlsx', type: 'array'});
+            const blob = new Blob([excelBuffer], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+            
+            updateProgressBar(100, 'Dönüştürme tamamlandı!');
+            
+            // Save the file
+            saveAs(blob, fileName.textContent.replace('.pdf', '.xlsx'));
+            
+            setTimeout(() => {
+                showNotification('Excel belgesi başarıyla oluşturuldu!');
+                resetState();
+            }, 1000);
+        }
+        
+        function showNotification(message, isError = false) {
+            const notification = document.createElement('div');
+            notification.className = 'notification' + (isError ? ' error' : '');
+            notification.innerHTML = message + '<button class="notification-close">&times;</button>';
+            
+            notifications.appendChild(notification);
+            
+            const closeButton = notification.querySelector('.notification-close');
+            closeButton.addEventListener('click', () => {
+                notification.classList.add('slide-out');
+                setTimeout(() => notification.remove(), 500);
+            });
+            
+            setTimeout(() => {
+                notification.classList.add('slide-out');
+                setTimeout(() => notification.remove(), 500);
+            }, 5000);
+        }
+        
+        function resetState() {
+            selectedFile = null;
+            fileInfo.style.display = 'none';
+            convertButton.disabled = true;
+            progressContainer.style.display = 'none';
+            previewContainer.style.display = 'none';
+            wordOptions.style.display = 'none';
+            excelOptions.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
